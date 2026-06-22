@@ -1,1 +1,579 @@
-# asistencia-alumnos-valley
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asistencia por Sección - Valley International School</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/SheetJS/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root{
+    --navy:#1a2b4a; --navy-dark:#10192e; --gold:#c9a227; --gold-light:#e8d28a;
+    --bg:#f4f5f7; --card:#ffffff; --ok:#2e8b57; --bad:#c0392b; --gray:#6b7280;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:#1f2430;}
+  header{background:linear-gradient(135deg,var(--navy),var(--navy-dark));color:#fff;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  header h1{margin:0;font-size:1.25rem;letter-spacing:.3px;}
+  header h1 span{color:var(--gold-light);}
+  nav{display:flex;gap:8px;flex-wrap:wrap;}
+  nav button{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.25);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:.85rem;transition:.15s;}
+  nav button:hover{background:rgba(255,255,255,.2);}
+  nav button.active{background:var(--gold);color:var(--navy-dark);font-weight:600;border-color:var(--gold);}
+  main{max-width:1100px;margin:24px auto;padding:0 16px 60px;}
+  .card{background:var(--card);border-radius:10px;padding:22px;box-shadow:0 2px 10px rgba(0,0,0,.06);margin-bottom:20px;}
+  h2{margin-top:0;color:var(--navy);font-size:1.1rem;border-bottom:2px solid var(--gold);padding-bottom:8px;}
+  label{display:block;font-size:.85rem;font-weight:600;color:var(--navy);margin:10px 0 4px;}
+  select, input[type=date], input[type=file], input[type=text]{
+    width:100%;padding:10px;border:1px solid #d4d7de;border-radius:6px;font-size:.95rem;background:#fff;
+  }
+  .row{display:flex;gap:16px;flex-wrap:wrap;}
+  .row > div{flex:1;min-width:220px;}
+  button.btn{background:var(--navy);color:#fff;border:none;padding:10px 18px;border-radius:6px;cursor:pointer;font-size:.9rem;font-weight:600;margin-top:8px;}
+  button.btn:hover{background:var(--navy-dark);}
+  button.btn:disabled{opacity:.5;cursor:not-allowed;}
+  button.btn.gold{background:var(--gold);color:var(--navy-dark);}
+  button.btn.gold:hover{background:#b8911f;}
+  button.btn.outline{background:transparent;color:var(--navy);border:1px solid var(--navy);}
+  button.btn.danger{background:var(--bad);}
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:.9rem;}
+  th,td{padding:9px 10px;border-bottom:1px solid #e6e8ec;text-align:left;}
+  th{background:#f0f1f5;color:var(--navy);}
+  .student-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #eee;}
+  .student-row:last-child{border-bottom:none;}
+  .student-name{font-weight:500;}
+  .toggle-group{display:flex;gap:6px;}
+  .toggle-btn{padding:6px 14px;border-radius:20px;border:1px solid #d4d7de;background:#fff;cursor:pointer;font-size:.8rem;font-weight:600;}
+  .toggle-btn.present.on{background:var(--ok);color:#fff;border-color:var(--ok);}
+  .toggle-btn.absent.on{background:var(--bad);color:#fff;border-color:var(--bad);}
+  .badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:.75rem;font-weight:600;}
+  .badge.ok{background:#e3f4ea;color:var(--ok);}
+  .badge.bad{background:#fbe7e5;color:var(--bad);}
+  .summary-cards{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;}
+  .stat{flex:1;min-width:150px;background:#f7f8fa;border-radius:8px;padding:14px;text-align:center;border:1px solid #eaecef;}
+  .stat .num{font-size:1.6rem;font-weight:700;color:var(--navy);}
+  .stat .lbl{font-size:.75rem;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;}
+  .hint{font-size:.8rem;color:var(--gray);margin-top:6px;}
+  .empty{color:var(--gray);font-size:.9rem;padding:14px 0;text-align:center;}
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;padding:12px 18px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.2);font-size:.9rem;opacity:0;transition:.3s;z-index:50;}
+  .toast.show{opacity:1;}
+  .toast.error{background:var(--bad);}
+  .pill{display:inline-block;background:var(--gold-light);color:var(--navy-dark);padding:2px 10px;border-radius:12px;font-size:.75rem;font-weight:600;margin-left:8px;}
+  .file-drop{border:2px dashed #cfd3da;border-radius:8px;padding:24px;text-align:center;color:var(--gray);cursor:pointer;background:#fafbfc;}
+  .file-drop:hover{border-color:var(--gold);}
+  footer{text-align:center;color:var(--gray);font-size:.75rem;padding:20px;}
+  .saved-flag{font-size:.8rem;color:var(--ok);font-weight:600;}
+  .config-banner{background:#fff7e0;border:1px solid var(--gold);border-radius:8px;padding:14px 18px;margin-bottom:18px;font-size:.85rem;color:#5a4a12;}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid #d4d7de;border-top-color:var(--navy);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Valley International <span>School</span> · Asistencia por Sección</h1>
+  <nav id="mainNav">
+    <button data-view="data" class="active">Datos / Carga</button>
+    <button data-view="attendance">Tomar Asistencia</button>
+    <button data-view="reports">Reportes</button>
+  </nav>
+</header>
+
+<main>
+
+  <div class="config-banner" id="configBanner" style="display:none;">
+    ⚠ Falta configurar la conexión a Google Sheets. Abre este archivo HTML con un editor de texto, busca la línea <code>const API_URL = '...'</code> al inicio del script, y pega ahí la URL de tu Apps Script Web App.
+  </div>
+
+  <!-- VISTA: CARGA DE DATOS -->
+  <section id="view-data" class="view">
+    <div class="card">
+      <h2>1. Cargar Excel de Secciones, Maestros y Alumnos</h2>
+      <p class="hint">El Excel debe tener columnas: <b>Sección</b>, <b>Maestro</b>, <b>Alumno</b>. Cada fila es un alumno asignado a una sección con su maestro. Esto se guardará en la hoja de Google compartida para que todos los maestros vean los mismos datos.</p>
+      <div class="file-drop" id="dropZone">
+        📂 Haz clic para seleccionar el archivo Excel (.xlsx)
+        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none">
+      </div>
+      <div id="loadStatus" class="hint"></div>
+    </div>
+
+    <div class="card" id="previewCard" style="display:none;">
+      <h2>Vista previa de secciones cargadas <span class="pill" id="totalSeccionesPill"></span></h2>
+      <button class="btn outline" id="btnRefreshSections" style="margin-bottom:10px;">🔄 Actualizar</button>
+      <div id="seccionesPreview"></div>
+    </div>
+  </section>
+
+  <!-- VISTA: TOMAR ASISTENCIA -->
+  <section id="view-attendance" class="view" style="display:none;">
+    <div class="card">
+      <h2>2. Seleccionar Maestro y Fecha</h2>
+      <div class="row">
+        <div>
+          <label>Maestro / Sección</label>
+          <select id="teacherSelect">
+            <option value="">-- Selecciona tu nombre --</option>
+          </select>
+        </div>
+        <div>
+          <label>Fecha</label>
+          <input type="date" id="attendanceDate">
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="attendanceCard" style="display:none;">
+      <h2 id="sectionTitle">Sección</h2>
+      <div class="row" style="margin-bottom:6px;">
+        <div><button class="btn outline" id="btnMarkAllPresent">Marcar todos presentes</button></div>
+        <div><button class="btn outline" id="btnMarkAllAbsent">Marcar todos ausentes</button></div>
+      </div>
+      <div id="studentList"></div>
+      <div class="summary-cards" id="liveSummary"></div>
+      <button class="btn gold" id="btnSaveAttendance" style="margin-top:16px;">Guardar Asistencia del Día</button>
+      <span class="saved-flag" id="savedFlag" style="margin-left:12px;display:none;">✔ Guardado</span>
+    </div>
+  </section>
+
+  <!-- VISTA: REPORTES -->
+  <section id="view-reports" class="view" style="display:none;">
+    <div class="card">
+      <h2>3. Reporte de Asistencia por Sección</h2>
+      <div class="row">
+        <div>
+          <label>Desde</label>
+          <input type="date" id="reportFrom">
+        </div>
+        <div>
+          <label>Hasta</label>
+          <input type="date" id="reportTo">
+        </div>
+        <div>
+          <label>Sección (opcional)</label>
+          <select id="reportSectionFilter">
+            <option value="">Todas las secciones</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn" id="btnGenerateReport" style="margin-top:14px;">Generar Reporte</button>
+      <div id="reportResults"></div>
+      <div class="row" id="exportRow" style="display:none;margin-top:14px;">
+        <div><button class="btn gold" id="btnExportExcel">⬇ Exportar a Excel</button></div>
+        <div><button class="btn gold" id="btnExportPDF">⬇ Exportar a PDF</button></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>Valley International School — Sistema de Asistencia por Sección (datos compartidos vía Google Sheets)</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===========================================================
+   CONFIGURACIÓN: pega aquí la URL de tu Apps Script Web App
+   =========================================================== */
+const API_URL = 'https://script.google.com/macros/s/AKfycbzhweR7if5tlaZR6xwL_vQEw21gpEiR9Od-PLLHUiyCoB-r-dVcoFTw8QM4TVnaBjTY/exec';
+
+/* ===========================================================
+   CAPA DE DATOS (Google Sheets vía Apps Script)
+   =========================================================== */
+
+function isConfigured(){
+  return API_URL && API_URL.indexOf('https://script.google.com') === 0;
+}
+
+async function apiGet(params){
+  const url = API_URL + '?' + new URLSearchParams(params).toString();
+  const res = await fetch(url);
+  const json = await res.json();
+  if(!json.ok) throw new Error(json.error || 'Error desconocido');
+  return json.data;
+}
+
+async function apiPost(body){
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS
+    body: JSON.stringify(body)
+  });
+  const json = await res.json();
+  if(!json.ok) throw new Error(json.error || 'Error desconocido');
+  return json;
+}
+
+async function fetchSections(){
+  return await apiGet({ action: 'getSections' });
+}
+async function pushSections(data){
+  return await apiPost({ action: 'saveSections', data: data });
+}
+async function fetchAttendance(from, to){
+  return await apiGet({ action: 'getAttendance', from: from, to: to });
+}
+async function pushAttendanceDay(date, section, records){
+  return await apiPost({ action: 'saveAttendanceDay', date: date, section: section, records: records });
+}
+
+function showToast(msg, isError){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.toggle('error', !!isError);
+  t.classList.add('show');
+  setTimeout(()=> t.classList.remove('show'), 2600);
+}
+
+function todayISO(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+/* ---------- NAVEGACIÓN ---------- */
+document.querySelectorAll('#mainNav button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#mainNav button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.style.display='none');
+    document.getElementById('view-'+btn.dataset.view).style.display='block';
+    if(btn.dataset.view === 'attendance') populateTeacherSelect();
+    if(btn.dataset.view === 'reports') populateReportSectionFilter();
+  });
+});
+
+/* ---------- CARGA DE EXCEL ---------- */
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+dropZone.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', handleFile);
+
+function handleFile(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(evt){
+    try{
+      const wb = XLSX.read(evt.target.result, {type:'binary'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
+      if(!rows.length){
+        document.getElementById('loadStatus').textContent = 'El archivo está vacío.';
+        return;
+      }
+      const keys = Object.keys(rows[0]);
+      const findKey = (opts)=> keys.find(k => opts.includes(k.trim().toLowerCase()));
+      const kSec = findKey(['sección','seccion','grado','grado/sección']);
+      const kMaestro = findKey(['maestro','maestra','profesor','docente']);
+      const kAlumno = findKey(['alumno','estudiante','nombre','alumno/a']);
+
+      if(!kSec || !kMaestro || !kAlumno){
+        document.getElementById('loadStatus').innerHTML = '⚠ No se encontraron las columnas esperadas (Sección, Maestro, Alumno). Columnas detectadas: '+keys.join(', ');
+        return;
+      }
+
+      const sections = {};
+      rows.forEach(r=>{
+        const sec = String(r[kSec]).trim();
+        const teacher = String(r[kMaestro]).trim();
+        const student = String(r[kAlumno]).trim();
+        if(!sec || !student) return;
+        if(!sections[sec]) sections[sec] = { teacher: teacher, students: [] };
+        sections[sec].students.push(student);
+      });
+
+      document.getElementById('loadStatus').innerHTML = '<span class="spinner"></span> Subiendo a Google Sheets...';
+      await pushSections(sections);
+      document.getElementById('loadStatus').innerHTML = '✔ Cargado correctamente: '+Object.keys(sections).length+' secciones, '+rows.length+' registros de alumnos.';
+      await renderSectionsPreview();
+      showToast('Datos cargados y compartidos correctamente');
+    }catch(err){
+      document.getElementById('loadStatus').textContent = 'Error: '+err.message;
+      showToast('Error al cargar: '+err.message, true);
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+let sectionsCache = {};
+
+async function renderSectionsPreview(){
+  if(!isConfigured()){ document.getElementById('configBanner').style.display='block'; return; }
+  try{
+    sectionsCache = await fetchSections();
+  }catch(err){
+    showToast('No se pudo conectar a Google Sheets: '+err.message, true);
+    return;
+  }
+  const keys = Object.keys(sectionsCache);
+  const previewCard = document.getElementById('previewCard');
+  const container = document.getElementById('seccionesPreview');
+  document.getElementById('totalSeccionesPill').textContent = keys.length + ' secciones';
+  if(!keys.length){ previewCard.style.display='none'; return; }
+  previewCard.style.display='block';
+  let html = '<table><thead><tr><th>Sección</th><th>Maestro</th><th># Alumnos</th></tr></thead><tbody>';
+  keys.forEach(k=>{
+    html += `<tr><td>${k}</td><td>${sectionsCache[k].teacher||'-'}</td><td>${sectionsCache[k].students.length}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+document.getElementById('btnRefreshSections').addEventListener('click', renderSectionsPreview);
+
+/* ---------- TOMAR ASISTENCIA ---------- */
+async function populateTeacherSelect(){
+  try{
+    sectionsCache = await fetchSections();
+  }catch(err){
+    showToast('No se pudo conectar a Google Sheets: '+err.message, true);
+    return;
+  }
+  const select = document.getElementById('teacherSelect');
+  select.innerHTML = '<option value="">-- Selecciona tu nombre --</option>';
+  Object.keys(sectionsCache).forEach(sec=>{
+    const teacher = sectionsCache[sec].teacher || '(sin maestro)';
+    const opt = document.createElement('option');
+    opt.value = sec;
+    opt.textContent = teacher + ' — ' + sec;
+    select.appendChild(opt);
+  });
+  if(!document.getElementById('attendanceDate').value){
+    document.getElementById('attendanceDate').value = todayISO();
+  }
+}
+
+let currentAttendanceState = {}; // { studentName: true/false }
+
+document.getElementById('teacherSelect').addEventListener('change', renderAttendanceForm);
+document.getElementById('attendanceDate').addEventListener('change', renderAttendanceForm);
+
+async function renderAttendanceForm(){
+  const sec = document.getElementById('teacherSelect').value;
+  const date = document.getElementById('attendanceDate').value;
+  const card = document.getElementById('attendanceCard');
+  document.getElementById('savedFlag').style.display = 'none';
+  if(!sec || !date){ card.style.display='none'; return; }
+  card.style.display='block';
+
+  const sectionData = sectionsCache[sec];
+  document.getElementById('sectionTitle').textContent = sectionData.teacher + ' — ' + sec + ' (' + sectionData.students.length + ' alumnos)';
+  document.getElementById('studentList').innerHTML = '<div class="empty"><span class="spinner"></span> Cargando asistencia del día...</div>';
+
+  let existingRecords = {};
+  try{
+    const records = await fetchAttendance(date, date);
+    records.filter(r => r.seccion === sec).forEach(r => existingRecords[r.alumno] = r.presente);
+  }catch(err){
+    showToast('No se pudo cargar asistencia previa: '+err.message, true);
+  }
+
+  currentAttendanceState = {};
+  sectionData.students.forEach(name=>{
+    currentAttendanceState[name] = existingRecords.hasOwnProperty(name) ? existingRecords[name] : true;
+  });
+
+  renderStudentList();
+}
+
+function renderStudentList(){
+  const container = document.getElementById('studentList');
+  const names = Object.keys(currentAttendanceState);
+  if(!names.length){ container.innerHTML = '<div class="empty">No hay alumnos en esta sección.</div>'; updateLiveSummary(); return; }
+  let html = '';
+  names.forEach(name=>{
+    const present = currentAttendanceState[name];
+    html += `<div class="student-row">
+      <span class="student-name">${name}</span>
+      <div class="toggle-group">
+        <button class="toggle-btn present ${present?'on':''}" data-name="${encodeURIComponent(name)}" data-val="true">Presente</button>
+        <button class="toggle-btn absent ${!present?'on':''}" data-name="${encodeURIComponent(name)}" data-val="false">Ausente</button>
+      </div>
+    </div>`;
+  });
+  container.innerHTML = html;
+  container.querySelectorAll('.toggle-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const name = decodeURIComponent(btn.dataset.name);
+      currentAttendanceState[name] = btn.dataset.val === 'true';
+      renderStudentList();
+    });
+  });
+  updateLiveSummary();
+}
+
+function updateLiveSummary(){
+  const vals = Object.values(currentAttendanceState);
+  const total = vals.length;
+  const present = vals.filter(v=>v).length;
+  const absent = total - present;
+  document.getElementById('liveSummary').innerHTML = `
+    <div class="stat"><div class="num">${total}</div><div class="lbl">Total</div></div>
+    <div class="stat"><div class="num" style="color:var(--ok)">${present}</div><div class="lbl">Presentes</div></div>
+    <div class="stat"><div class="num" style="color:var(--bad)">${absent}</div><div class="lbl">Ausentes</div></div>
+  `;
+}
+
+document.getElementById('btnMarkAllPresent').addEventListener('click', ()=>{
+  Object.keys(currentAttendanceState).forEach(n=> currentAttendanceState[n]=true);
+  renderStudentList();
+});
+document.getElementById('btnMarkAllAbsent').addEventListener('click', ()=>{
+  Object.keys(currentAttendanceState).forEach(n=> currentAttendanceState[n]=false);
+  renderStudentList();
+});
+
+document.getElementById('btnSaveAttendance').addEventListener('click', async ()=>{
+  const sec = document.getElementById('teacherSelect').value;
+  const date = document.getElementById('attendanceDate').value;
+  if(!sec || !date){ showToast('Selecciona maestro y fecha'); return; }
+  const btn = document.getElementById('btnSaveAttendance');
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+  try{
+    await pushAttendanceDay(date, sec, currentAttendanceState);
+    document.getElementById('savedFlag').style.display = 'inline';
+    showToast('Asistencia guardada para ' + sec + ' (' + date + ')');
+  }catch(err){
+    showToast('Error al guardar: '+err.message, true);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Guardar Asistencia del Día';
+  }
+});
+
+/* ---------- REPORTES ---------- */
+async function populateReportSectionFilter(){
+  try{
+    sectionsCache = await fetchSections();
+  }catch(err){
+    showToast('No se pudo conectar a Google Sheets: '+err.message, true);
+  }
+  const select = document.getElementById('reportSectionFilter');
+  select.innerHTML = '<option value="">Todas las secciones</option>';
+  Object.keys(sectionsCache).forEach(sec=>{
+    const opt = document.createElement('option');
+    opt.value = sec;
+    opt.textContent = (sectionsCache[sec].teacher||'-') + ' — ' + sec;
+    select.appendChild(opt);
+  });
+  if(!document.getElementById('reportFrom').value){
+    document.getElementById('reportFrom').value = todayISO();
+    document.getElementById('reportTo').value = todayISO();
+  }
+}
+
+let lastReportData = [];
+
+document.getElementById('btnGenerateReport').addEventListener('click', generateReport);
+
+async function generateReport(){
+  const from = document.getElementById('reportFrom').value;
+  const to = document.getElementById('reportTo').value;
+  const filterSec = document.getElementById('reportSectionFilter').value;
+  if(!from || !to){ showToast('Selecciona el rango de fechas'); return; }
+
+  document.getElementById('reportResults').innerHTML = '<div class="empty"><span class="spinner"></span> Generando reporte...</div>';
+
+  let records;
+  try{
+    records = await fetchAttendance(from, to);
+  }catch(err){
+    showToast('Error al obtener datos: '+err.message, true);
+    document.getElementById('reportResults').innerHTML = '<div class="empty">Error al cargar datos.</div>';
+    return;
+  }
+
+  const summary = {};
+  records.forEach(r=>{
+    if(filterSec && r.seccion !== filterSec) return;
+    if(!sectionsCache[r.seccion]) return;
+    if(!summary[r.seccion]){
+      summary[r.seccion] = { teacher: sectionsCache[r.seccion].teacher||'-', presentes:0, ausentes:0, dias:new Set() };
+    }
+    summary[r.seccion].dias.add(r.fecha);
+    if(r.presente) summary[r.seccion].presentes++;
+    else summary[r.seccion].ausentes++;
+  });
+
+  const rows = Object.keys(summary).map(sec=>{
+    const s = summary[sec];
+    const total = s.presentes + s.ausentes;
+    const pct = total ? ((s.presentes/total)*100).toFixed(1) : '0.0';
+    return {
+      seccion: sec, maestro: s.teacher, diasRegistrados: s.dias.size,
+      presentes: s.presentes, ausentes: s.ausentes, totalMarcas: total, porcentaje: pct
+    };
+  });
+
+  lastReportData = rows;
+  renderReportTable(rows, from, to);
+}
+
+function renderReportTable(rows, from, to){
+  const container = document.getElementById('reportResults');
+  const exportRow = document.getElementById('exportRow');
+  if(!rows.length){
+    container.innerHTML = '<div class="empty">No hay asistencia registrada en ese rango de fechas.</div>';
+    exportRow.style.display = 'none';
+    return;
+  }
+  let html = `<p class="hint">Periodo: ${from} a ${to}</p><table><thead><tr>
+    <th>Sección</th><th>Maestro</th><th>Días Registrados</th><th>Presentes</th><th>Ausentes</th><th>% Asistencia</th>
+  </tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const cls = parseFloat(r.porcentaje) >= 85 ? 'ok' : 'bad';
+    html += `<tr>
+      <td>${r.seccion}</td><td>${r.maestro}</td><td>${r.diasRegistrados}</td>
+      <td>${r.presentes}</td><td>${r.ausentes}</td>
+      <td><span class="badge ${cls}">${r.porcentaje}%</span></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+  exportRow.style.display = 'flex';
+}
+
+document.getElementById('btnExportExcel').addEventListener('click', ()=>{
+  if(!lastReportData.length){ showToast('Genera el reporte primero'); return; }
+  const from = document.getElementById('reportFrom').value;
+  const to = document.getElementById('reportTo').value;
+  const wsData = lastReportData.map(r=>({
+    'Sección': r.seccion, 'Maestro': r.maestro, 'Días Registrados': r.diasRegistrados,
+    'Presentes': r.presentes, 'Ausentes': r.ausentes, 'Total Marcas': r.totalMarcas,
+    '% Asistencia': r.porcentaje + '%'
+  }));
+  const ws = XLSX.utils.json_to_sheet(wsData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
+  XLSX.writeFile(wb, `Asistencia_Secciones_${from}_a_${to}.xlsx`);
+  showToast('Excel exportado');
+});
+
+document.getElementById('btnExportPDF').addEventListener('click', ()=>{
+  if(!lastReportData.length){ showToast('Genera el reporte primero'); return; }
+  const from = document.getElementById('reportFrom').value;
+  const to = document.getElementById('reportTo').value;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(14);
+  doc.text('Valley International School', 14, 16);
+  doc.setFontSize(11);
+  doc.text(`Reporte de Asistencia por Sección (${from} a ${to})`, 14, 24);
+  const body = lastReportData.map(r=>[r.seccion, r.maestro, r.diasRegistrados, r.presentes, r.ausentes, r.porcentaje+'%']);
+  doc.autoTable({
+    head: [['Sección','Maestro','Días Reg.','Presentes','Ausentes','% Asistencia']],
+    body: body, startY: 30, headStyles: { fillColor: [26,43,74] }, styles: { fontSize: 9 }
+  });
+  doc.save(`Asistencia_Secciones_${from}_a_${to}.pdf`);
+  showToast('PDF exportado');
+});
+
+/* ---------- INICIALIZACIÓN ---------- */
+if(!isConfigured()){
+  document.getElementById('configBanner').style.display = 'block';
+}else{
+  renderSectionsPreview();
+}
+</script>
+</body>
+</html>
